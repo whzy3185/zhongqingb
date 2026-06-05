@@ -2,8 +2,8 @@
 
 ## 当前页数
 
-- `paper/main.pdf`：8 页
-- `paper/main_with_excel_tables.pdf`：10 页
+- `paper/main.pdf`：9 页
+- `paper/main_with_excel_tables.pdf`：11 页
 
 ## 细则要求
 

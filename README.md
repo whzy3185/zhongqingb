@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-已完成 B 题从输入审计、题面读取、附件解析、图像 NR-IQA 建模、组合赋权、综合评价、视频时序质量分析、图表、论文 Word/PDF 和提交包装配的全流程草稿。
+已完成 B 题从输入审计、题面读取、附件解析、图像 NR-IQA 建模、组合赋权、综合评价、附件内部相对高/中/低等级、视频时序质量分析、图表、论文 Word/PDF 和提交包装配的全流程草稿。
 
 ## 推荐提交文件
 
@@ -45,7 +45,7 @@
 
 ## 当前推荐模型口径
 
-M1 NR-IQA 指标量化；M2 AHP-熵权-CRITIC 组合赋权；M3 TOPSIS-灰色关联综合评价；M4 有效性修正与语义等级校准；M5 光流-一致性-闪烁视频时序质量模型；M6 本地规则型 Agent 复核。
+M1 NR-IQA 指标量化；M2 AHP-熵权-CRITIC 组合赋权；M3 TOPSIS-灰色关联综合评价；M4 有效性修正与绝对/相对等级校准；M5 光流-一致性-闪烁视频时序质量模型；M6 本地规则型 Agent 复核。
 
 ## Word 与论文格式要求
 
@@ -56,7 +56,7 @@ M1 NR-IQA 指标量化；M2 AHP-熵权-CRITIC 组合赋权；M3 TOPSIS-灰色关
 - Markdown：`paper/main.md`
 - Word：`paper/main_with_excel_tables.docx`
 - PDF：`paper/main_with_excel_tables.pdf`
-- 当前 PDF 页数：10
+- 当前 PDF 页数：11
 
 ## 复现命令
 
@@ -84,6 +84,7 @@ python scripts\19_run_all.py
 | 综合评价模型存在         | PASS                       |                              |
 | 有效性修正存在           | PASS                       |                              |
 | 语义分级校准存在         | PASS                       |                              |
+| 相对高/中/低等级表存在   | PASS                       | 用于问题二附件内部等级解释   |
 | 参数-质量关系模型存在    | N/A_BY_PROBLEM_WITH_REPORT | 真实参数缺失，标为代理敏感性 |
 | 参数优化模型存在         | N/A_BY_PROBLEM_WITH_REPORT | 题面不适用，不伪造参数       |
 | 多智能体复核存在         | PASS                       |                              |
@@ -93,11 +94,12 @@ python scripts\19_run_all.py
 | Word/PDF 生成            | PASS                       |                              |
 | 提交包生成               | PASS                       |                              |
 | 弱监督限制已说明         | PASS                       |                              |
+| 8图小样本限制已说明      | PASS                       |                              |
 | AI 风险不是违规判定      | PASS                       |                              |
 | 参数范围来源已说明       | PASS                       | 无真实参数范围               |
 | 一键复现命令可用         | PASS                       |                              |
 | 论文不存在旧结论残留     | PASS                       |                              |
-| 页数是否符合要求         | PASS                       | PDF 页数=10                  |
+| 页数是否符合要求         | PASS                       | PDF 页数=11                  |
 | 是否存在待人工确认格式项 | MANUAL_CHECK_REQUIRED      | 待人工确认计数=3             |
 
 ## 人工待检查项

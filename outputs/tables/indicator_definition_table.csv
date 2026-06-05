@@ -1,5 +1,5 @@
 ﻿indicator,name_cn,direction,definition
-semantic_proxy_score,语义要素覆盖代理,正向,由代理描述中主体、属性、场景、风格四类要素覆盖率计算
+semantic_proxy_score,语义结构完整性代理,正向,由代理描述中主体、属性、场景、风格四类要素覆盖率计算
 sharpness_score,清晰度,正向,Laplacian 方差经对数饱和函数归一化
 nss_score,自然场景统计质量,正向,亮度均衡、对比度、灰度熵和伪影反向指标综合
 noise_inverse_score,噪声抑制,正向,高频残差噪声风险的反向分

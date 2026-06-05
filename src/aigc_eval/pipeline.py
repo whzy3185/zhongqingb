@@ -316,7 +316,7 @@ def read_problem() -> None:
 
 ## 背景摘要
 
-题面围绕扩散模型和生成式 AI 视频/图像内容质量评价展开，强调单帧图像质量、语义保真度、技术质量、结构完整性，以及时序连贯性、光流连续性、内容一致性和闪烁检测。
+题面围绕扩散模型和生成式 AI 视频/图像内容质量评价展开，强调单帧图像质量、提示词语义匹配、技术质量、结构完整性，以及时序连贯性、光流连续性、内容一致性和闪烁检测。
 
 ## 真实三问
 
@@ -346,7 +346,7 @@ def read_problem() -> None:
     assumptions = f"""# 模型假设与限制
 
 1. 附件未提供每张图像的原始生成提示词、模型名、seed、采样步数、引导系数、采样器和生成耗时，因此不能进行真实生成参数优化，也不能构造伪参数。
-2. 图像语义保真度在实际计算中使用“可视内容结构化代理描述”，该描述来自审题观察，只用于近似文本要素完整性，不等同于原始提示词。
+2. 附件未提供原始提示词，本文不计算真实 prompt-image 语义保真度；实际计算使用“可视内容结构化代理描述”，只作为语义结构完整性代理。
 3. 附件 1 的 8 张图没有专家标签、专家打分或官方高/中/低标签；论文中的等级为指标体系综合评分等级，不是专家质量标签。
 4. 题面提到样本应覆盖产品渲染，但附件 1 的 8 张图经可视审计未发现明确产品渲染样本；论文按附件实际内容类型分析，不补造不存在的样本类型。
 5. 视频中车辆检测若未使用训练好的外部目标检测模型，则只采用光流、亮度、颜色直方图、边缘与运动强度等可解释视觉代理指标，不伪造车辆检测结果。
@@ -883,7 +883,7 @@ def build_features() -> None:
 
 
 INDICATORS = [
-    ("semantic_proxy_score", "语义要素覆盖代理", "正向", "由代理描述中主体、属性、场景、风格四类要素覆盖率计算"),
+    ("semantic_proxy_score", "语义结构完整性代理", "正向", "由代理描述中主体、属性、场景、风格四类要素覆盖率计算"),
     ("sharpness_score", "清晰度", "正向", "Laplacian 方差经对数饱和函数归一化"),
     ("nss_score", "自然场景统计质量", "正向", "亮度均衡、对比度、灰度熵和伪影反向指标综合"),
     ("noise_inverse_score", "噪声抑制", "正向", "高频残差噪声风险的反向分"),
@@ -1085,6 +1085,32 @@ def grade_fixed(score: float) -> str:
     return "较低"
 
 
+def assign_relative_quality_tiers(scores: pd.Series) -> pd.Series:
+    ranks = scores.rank(ascending=False, method="first").astype(int)
+    n = len(ranks)
+    if n == 8:
+        return ranks.map(lambda r: "相对高" if r <= 2 else ("相对中" if r <= 5 else "相对低"))
+    high_cut = max(1, math.ceil(n / 3))
+    mid_cut = max(high_cut + 1, math.ceil(2 * n / 3))
+    return ranks.map(lambda r: "相对高" if r <= high_cut else ("相对中" if r <= mid_cut else "相对低"))
+
+
+def strength_weakness_from_features(row: pd.Series) -> tuple[str, str]:
+    dimensions = {
+        "语义结构完整性代理": float(row.get("semantic_proxy_score", np.nan)),
+        "技术质量": float(row.get("technical_quality_score", np.nan)),
+        "结构完整性": float(row.get("structure_integrity_score", np.nan)),
+        "视觉表达": float(0.5 * row.get("color_richness_score", 0) + 0.5 * row.get("composition_proxy_score", 0)),
+        "伪影抑制": float(row.get("artifact_inverse_score", np.nan)),
+    }
+    valid = {k: v for k, v in dimensions.items() if np.isfinite(v)}
+    if not valid:
+        return "待人工复核", "待人工复核"
+    strength = max(valid, key=valid.get)
+    weakness = min(valid, key=valid.get)
+    return strength, weakness
+
+
 def quality_evaluation() -> None:
     ensure_dirs()
     if not (TABLE_DIR / "combined_weights.csv").exists():
@@ -1200,11 +1226,47 @@ def validity_corrected_score() -> None:
     res["Q_corrected"] = np.clip(res["Q_raw"] * (0.75 + 0.25 * res["G_valid"]) - res["risk_penalty"], 0, 100)
     res["Q_final"] = np.clip(res["Q_raw"] * (0.85 + 0.15 * res["G_valid"]) - 0.5 * res["risk_penalty"], 0, 100)
     res["final_grade"] = res["Q_final"].map(grade_fixed)
+    res["absolute_quality_grade"] = res["final_grade"]
+    res["rank"] = res["Q_final"].rank(ascending=False, method="first").astype(int)
+    res["relative_quality_tier"] = assign_relative_quality_tiers(res["Q_final"])
+    strengths = df.apply(strength_weakness_from_features, axis=1)
+    res["key_strength"] = [x[0] for x in strengths]
+    res["key_weakness"] = [x[1] for x in strengths]
     res.to_csv(TABLE_DIR / "validity_features.csv", index=False, encoding="utf-8-sig")
     res.to_csv(TABLE_DIR / "corrected_quality_scores.csv", index=False, encoding="utf-8-sig")
-    final = res[["sample_id", "file_name", "content_type", "Q_raw", "G_valid", "Q_corrected", "Q_final", "final_grade"]].copy()
+    final = res[
+        [
+            "sample_id",
+            "file_name",
+            "content_type",
+            "Q_raw",
+            "G_valid",
+            "Q_corrected",
+            "Q_final",
+            "absolute_quality_grade",
+            "relative_quality_tier",
+            "rank",
+            "key_strength",
+            "key_weakness",
+        ]
+    ].copy()
+    final["final_grade"] = final["absolute_quality_grade"]
     final["semantic_final_grade"] = final["final_grade"]
     final.to_csv(TABLE_DIR / "final_semantic_quality_grades.csv", index=False, encoding="utf-8-sig")
+    relative_table = final[
+        [
+            "sample_id",
+            "file_name",
+            "content_type",
+            "Q_final",
+            "absolute_quality_grade",
+            "relative_quality_tier",
+            "rank",
+            "key_strength",
+            "key_weakness",
+        ]
+    ].sort_values("rank")
+    relative_table.to_csv(TABLE_DIR / "image_relative_quality_tiers.csv", index=False, encoding="utf-8-sig")
     md1 = f"""# M4 质量有效性修正模型
 
 有效性门控：
@@ -1228,6 +1290,12 @@ $$
 ## 结果
 
 {table_md(final.sort_values("Q_final", ascending=False), 20)}
+
+## 附件内部相对三档
+
+为回应题面“高、中、低质量等级”的表述，同时避免把机器分数包装成专家标签，本文新增相对等级：按 `Q_final` 排序，前 2 张为相对高，第 3-5 张为相对中，第 6-8 张为相对低。相对等级只用于附件 1 内部比较。
+
+{table_md(relative_table, 20)}
 """
     write_text(REPORT_DIR / "VALIDITY_CORRECTED_MODEL.md", md1)
     md2 = f"""# 等级语义校准
@@ -1235,12 +1303,17 @@ $$
 ## 校准原则
 
 1. 没有专家标签时，不把模型等级写成真实人工等级；
-2. 固定阈值、分位数和 KMeans 分级若出现语义不一致，以 `Q_final` 的固定阈值作为主论文等级；
-3. 对提示词缺失导致的语义保真度不确定性，在结论中给出限制说明。
+2. 固定阈值、分位数和 KMeans 分级若出现语义不一致，以 `Q_final` 的固定阈值作为绝对等级；
+3. 另设 `relative_quality_tier` 回应附件内部高/中/低质量比较，不等同于专家标签；
+4. 对提示词缺失导致的语义结构代理不确定性，在结论中给出限制说明。
 
 ## 最终语义等级
 
 {table_md(final.sort_values("Q_final", ascending=False), 20)}
+
+## 相对高/中/低等级
+
+{table_md(relative_table, 20)}
 """
     write_text(REPORT_DIR / "SEMANTIC_GRADE_CALIBRATION.md", md2)
     log("Stage 07 completed: validity corrected score")
@@ -1445,7 +1518,7 @@ def generate_figures() -> None:
     ax.axis("off")
     boxes = [
         ("AI生成内容质量", 0.5, 0.90),
-        ("语义保真度", 0.15, 0.62),
+        ("语义结构代理", 0.15, 0.62),
         ("技术质量", 0.38, 0.62),
         ("结构完整性", 0.62, 0.62),
         ("视觉表达", 0.85, 0.62),
@@ -1611,6 +1684,7 @@ def load_results_for_paper() -> dict[str, pd.DataFrame]:
         "features": TABLE_DIR / "features.csv",
         "weights": TABLE_DIR / "combined_weights.csv",
         "scores": TABLE_DIR / "final_semantic_quality_grades.csv",
+        "relative_tiers": TABLE_DIR / "image_relative_quality_tiers.csv",
         "video": TABLE_DIR / "video_temporal_features.csv",
         "param_corr": TABLE_DIR / "parameter_quality_correlation.csv",
         "agent_dis": TABLE_DIR / "agent_disagreement.csv",
@@ -1621,6 +1695,7 @@ def load_results_for_paper() -> dict[str, pd.DataFrame]:
 def compose_paper_markdown() -> str:
     res = load_results_for_paper()
     scores = res["scores"].sort_values("Q_final", ascending=False)
+    rel_tiers = res.get("relative_tiers", pd.DataFrame()).sort_values("rank") if "relative_tiers" in res else pd.DataFrame()
     video = res["video"]
     top = scores.iloc[0] if not scores.empty else None
     low = scores.iloc[-1] if not scores.empty else None
@@ -1634,15 +1709,15 @@ def compose_paper_markdown() -> str:
 
 ## 摘要
 
-针对 2026 年第八届中青杯数学建模竞赛 B 题，本文围绕 AI 生成图像和视频的质量评价建立无参考评价模型。首先将图像质量分解为语义保真度代理、技术质量、结构完整性和视觉表达四类指标，构造 Laplacian 清晰度、自然场景统计质量、伪影风险、边缘连续性、形状规则性、亮度均衡、色彩丰富度和构图代理等可计算指标。其次采用 AHP、熵权法和 CRITIC 法组合赋权，并利用 TOPSIS 与灰色关联分析得到图像综合质量分。为避免分辨率、边缘复杂度等数量指标造成虚高，进一步引入有效性门控和风险惩罚，得到最终质量指数。最后针对附件 2 的车流视频，建立基于 Farneback 光流连续性、颜色直方图一致性和亮度突变的时序质量模型。
+针对 2026 年第八届中青杯数学建模竞赛 B 题，本文围绕 AI 生成图像和视频的质量评价建立无参考评价模型。首先将图像质量分解为语义结构完整性代理、技术质量、结构完整性和视觉表达四类指标，构造 Laplacian 清晰度、自然场景统计质量、伪影风险、边缘连续性、形状规则性、亮度均衡、色彩丰富度和构图代理等可计算指标。其次采用 AHP、熵权法和 CRITIC 法组合赋权，并利用 TOPSIS 与灰色关联分析得到图像综合质量分。为避免分辨率、边缘复杂度等数量指标造成虚高，进一步引入有效性门控和风险惩罚，得到最终质量指数。最后针对附件 2 的车流视频，建立基于 Farneback 光流连续性、颜色直方图一致性和亮度突变的时序质量模型。
 
-附件 1 的 8 张图像中，综合质量最高样本为 {top_name}，最终分为 {top_score:.2f}；最低样本为 {low_name}，最终分为 {low_score:.2f}。附件 2 视频时序质量分为 {video_score:.2f}，模型判断时序失稳标记为 {"是" if instability else "否"}。由于附件未提供原始提示词、专家评分和真实生成参数，本文所有等级均为指标体系综合等级，不解释为专家标签；参数优化部分仅给出不适用审计和可观测代理敏感性分析。
+附件 1 的 8 张图像中，综合质量最高样本为 {top_name}，最终分为 {top_score:.2f}；最低样本为 {low_name}，最终分为 {low_score:.2f}。为回应题面高/中/低质量覆盖要求，本文同时给出固定阈值绝对等级和附件内部相对三档等级；相对等级只表示本批 8 张图像内部排序，不解释为专家标签。附件 2 视频时序质量分为 {video_score:.2f}，模型判断时序失稳标记为 {"是" if instability else "否"}。由于附件未提供原始提示词、专家评分和真实生成参数，参数优化部分仅给出不适用审计和可观测代理敏感性分析。
 
 **关键词**：AI 生成内容；无参考图像质量评价；组合赋权；TOPSIS；灰色关联；光流连续性
 
 ## 1 问题重述
 
-B 题要求建立 AI 生成内容质量评价模型。问题一要求建立无参考图像质量评价数学模型，包含语义保真度、技术质量和结构完整性等指标；问题二要求对附件 1 的 8 张 AI 生成图像进行评估，并分析内容类型对指标敏感性的影响；问题三要求建立视频时序质量模型，考虑光流连续性、内容一致性、闪烁检测以及时序失稳条件，并分析附件 2 的车流视频。
+B 题要求建立 AI 生成内容质量评价模型。问题一要求建立无参考图像质量评价数学模型，题面强调提示词语义保真度、技术质量和结构完整性等指标；问题二要求对附件 1 的 8 张 AI 生成图像进行评估，并分析内容类型对指标敏感性的影响；问题三要求建立视频时序质量模型，考虑光流连续性、内容一致性、闪烁检测以及时序失稳条件，并分析附件 2 的车流视频。
 
 ## 2 问题分析
 
@@ -1652,7 +1727,7 @@ AI 生成图像没有标准参考图像，不能直接使用 PSNR 或 SSIM。因
 
 ## 3 模型假设
 
-1. 附件未给出原始提示词，语义保真度计算使用可视内容结构化描述作为代理。
+1. 附件未给出原始提示词，本文不计算真实 prompt-image 保真度，只计算语义结构完整性代理。
 2. 附件未给出专家标签，本文分级为模型综合等级。
 3. 附件未给出真实生成参数，因此不做真实参数优化。
 4. 视频不使用外部训练检测器，车辆和场景稳定性使用光流与视觉统计代理。
@@ -1676,11 +1751,13 @@ AI 生成图像没有标准参考图像，不能直接使用 PSNR 或 SSIM。因
 
 题面问题二提到样本需覆盖写实风景、人物肖像、艺术插画、产品渲染等类型，但附件 1 的 8 张图经可视审计未发现明确产品渲染样本。为保证数据真实性，本文按附件实际内容类型建立样本清单和敏感性分析，不补造不存在的产品渲染样本或质量标签。
 
-| 样本ID | 文件 | 类型 | 最终分 | 等级 |
-|---|---|---|---:|---|
+| 样本ID | 文件 | 类型 | 最终分 | 绝对等级 | 相对等级 |
+|---|---|---|---:|---|---|
 """
     for _, r in scores.iterrows():
-        md += f"| {r['sample_id']} | {r['file_name']} | {r['content_type']} | {r['Q_final']:.2f} | {r['final_grade']} |\n"
+        abs_grade = r.get("absolute_quality_grade", r.get("final_grade", ""))
+        rel_grade = r.get("relative_quality_tier", "")
+        md += f"| {r['sample_id']} | {r['file_name']} | {r['content_type']} | {r['Q_final']:.2f} | {abs_grade} | {rel_grade} |\n"
     md += f"""
 
 ## 6 问题一：无参考图像质量评价模型
@@ -1715,15 +1792,15 @@ $$
 
 ![质量指标体系层次图](figures/indicator_hierarchy.png)
 
-### 6.2 语义保真度代理
+### 6.2 语义结构完整性代理
 
-题面要求将提示词分为主体对象、属性描述、场景关系、风格指令四类。由于附件没有原始提示词，本文用审题可视描述构造代理文本 $T_i$。设四类要素集合分别为 $E_i^s,E_i^a,E_i^r,E_i^g$，语义要素覆盖分为
+题面要求将提示词分为主体对象、属性描述、场景关系、风格指令四类。由于附件没有原始提示词，本文不能计算真实 prompt-image 语义保真度，而是用审题可视描述构造代理文本 $T_i$，建立语义结构完整性代理指标。设四类要素集合分别为 $E_i^s,E_i^a,E_i^r,E_i^g$，语义要素覆盖分为
 
 $$
 S_i=0.55\\frac{{I(E_i^s)+I(E_i^a)+I(E_i^r)+I(E_i^g)}}{{4}}+0.45\\min\\left(\\frac{{|T_i|}}{{9}},1\\right).
 $$
 
-该指标只表示代理描述是否覆盖题面要求的语义维度，不代表原始提示词匹配度。
+该指标只表示代理描述是否覆盖题面要求的语义维度，不代表原始提示词匹配度，也不等同于 CLIP 语义相似度。
 
 ### 6.3 技术质量与结构完整性
 
@@ -1801,7 +1878,19 @@ $$
 
 ![分数修正对比](figures/score_comparison.png)
 
-### 7.4 内容类型敏感性
+### 7.4 绝对等级与相对等级
+
+固定阈值绝对等级反映模型分数是否达到预设质量区间；附件内部相对等级用于回应题面“高、中、低质量等级”的比较需求。本文按 `Q_final` 排序，将第 1-2 名定义为相对高，第 3-5 名定义为相对中，第 6-8 名定义为相对低。该相对等级只用于本批附件内部比较，不是专家标签。
+
+| 样本ID | 文件 | 类型 | 最终分 | 绝对等级 | 相对等级 | 关键优势 | 关键弱点 |
+|---|---|---|---:|---|---|---|---|
+"""
+    if not rel_tiers.empty:
+        for _, r in rel_tiers.iterrows():
+            md += f"| {r['sample_id']} | {r['file_name']} | {r['content_type']} | {r['Q_final']:.2f} | {r['absolute_quality_grade']} | {r['relative_quality_tier']} | {r['key_strength']} | {r['key_weakness']} |\n"
+    md += f"""
+
+### 7.5 内容类型敏感性
 
 写实风景类更依赖清晰度、自然场景统计和亮度均衡；人物肖像和人物插画更依赖结构完整性、边缘连续性和伪影风险；水墨、像素等强风格图像的自然场景统计得分未必最高，因此需要把风格与技术质量分开解释。
 
@@ -1869,7 +1958,7 @@ $$
 
 优点：模型完全本地可复现，指标均有明确数学定义；评分过程兼顾主观评价逻辑和客观数据差异；视频模型直接对应题面给出的光流、内容一致性和闪烁因素。
 
-不足：缺少原始提示词、专家评分和真实生成参数，语义保真度和等级校准只能使用代理；没有训练式目标检测器时，车流视频中的车辆数量和身份一致性只能由光流与颜色统计间接描述。
+不足：缺少原始提示词、专家评分和真实生成参数，语义结构完整性和等级校准只能使用代理；附件 1 仅含 8 张图像，组合赋权和相对分级主要用于本批样本内部比较，外推到更大规模 AIGC 图像集时需要重新校准权重和等级阈值；没有训练式目标检测器时，车流视频中的车辆数量和身份一致性只能由光流与颜色统计间接描述。
 
 ## 11 结论
 
@@ -2014,7 +2103,7 @@ def build_docx(out_path: Path, with_excel_tables: bool = False, team_id: str = "
             continue
         if table_buffer:
             table_no += 1
-            add_caption_paragraph(doc, f"表 {table_no} 论文正文表格", kind="table")
+            add_caption_paragraph(doc, f"表 {table_no} {infer_markdown_table_caption(table_buffer)}", kind="table")
             add_markdown_table(doc, table_buffer)
             table_buffer = []
         if not line.strip():
@@ -2064,7 +2153,7 @@ def build_docx(out_path: Path, with_excel_tables: bool = False, team_id: str = "
             set_run_font(r, "宋体", 12)
     if table_buffer:
         table_no += 1
-        add_caption_paragraph(doc, f"表 {table_no} 论文正文表格", kind="table")
+        add_caption_paragraph(doc, f"表 {table_no} {infer_markdown_table_caption(table_buffer)}", kind="table")
         add_markdown_table(doc, table_buffer)
     if formula_buffer:
         formula_no += 1
@@ -2075,6 +2164,7 @@ def build_docx(out_path: Path, with_excel_tables: bool = False, team_id: str = "
         r = p.add_run("主要结果表（Excel 同步版本）")
         set_run_font(r, "黑体", 14, True)
         add_csv_table_to_doc(doc, TABLE_DIR / "final_semantic_quality_grades.csv", "图像最终评分表")
+        add_csv_table_to_doc(doc, TABLE_DIR / "image_relative_quality_tiers.csv", "附件1相对高/中/低等级表")
         add_csv_table_to_doc(doc, TABLE_DIR / "video_temporal_features.csv", "视频时序质量表")
         add_csv_table_to_doc(doc, TABLE_DIR / "combined_weights.csv", "组合权重表")
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -2091,6 +2181,17 @@ def add_caption_paragraph(doc: Any, text: str, kind: str = "figure") -> None:
     p.paragraph_format.space_after = Pt(3)
     r = p.add_run(text)
     set_run_font(r, "宋体", 10.5, False)
+
+
+def infer_markdown_table_caption(lines: list[str]) -> str:
+    header = lines[0] if lines else ""
+    if "符号" in header:
+        return "符号说明"
+    if "关键优势" in header or "关键弱点" in header:
+        return "附件1相对高/中/低等级与优劣势"
+    if "样本ID" in header and "最终分" in header:
+        return "附件1图像质量评分结果"
+    return "论文正文表格"
 
 
 def add_formula_paragraph(doc: Any, formula: str, number: int) -> None:
@@ -2182,6 +2283,7 @@ def build_excel_tables_word() -> None:
             "指标矩阵": TABLE_DIR / "indicator_matrix_normalized.csv",
             "组合权重": TABLE_DIR / "combined_weights.csv",
             "图像评分": TABLE_DIR / "final_semantic_quality_grades.csv",
+            "相对等级": TABLE_DIR / "image_relative_quality_tiers.csv",
             "视频时序": TABLE_DIR / "video_temporal_features.csv",
             "参数审计": TABLE_DIR / "optimization_method_comparison.csv",
         }
@@ -2345,6 +2447,7 @@ def final_quality_audit() -> None:
         ("综合评价模型存在", (TABLE_DIR / "comprehensive_quality_scores.csv").exists(), ""),
         ("有效性修正存在", (TABLE_DIR / "corrected_quality_scores.csv").exists(), ""),
         ("语义分级校准存在", (TABLE_DIR / "final_semantic_quality_grades.csv").exists(), ""),
+        ("相对高/中/低等级表存在", (TABLE_DIR / "image_relative_quality_tiers.csv").exists(), "用于问题二附件内部等级解释"),
         ("参数-质量关系模型存在", (REPORT_DIR / "PARAMETER_EFFECT_ANALYSIS.md").exists(), "真实参数缺失，标为代理敏感性"),
         ("参数优化模型存在", (REPORT_DIR / "PARAMETER_OPTIMIZATION_REPORT.md").exists(), "题面不适用，不伪造参数"),
         ("多智能体复核存在", (TABLE_DIR / "agent_scores.csv").exists(), ""),
@@ -2354,6 +2457,7 @@ def final_quality_audit() -> None:
         ("Word/PDF 生成", (PAPER_DIR / "main_with_excel_tables.docx").exists() and (PAPER_DIR / "main_with_excel_tables.pdf").exists(), ""),
         ("提交包生成", (SUBMISSION_DIR / "B题支撑材料_zhongqingB.zip").exists(), ""),
         ("弱监督限制已说明", "没有专家标签" in (REPORT_DIR / "ASSUMPTIONS.md").read_text(encoding="utf-8"), ""),
+        ("8图小样本限制已说明", "仅含 8 张图像" in (PAPER_DIR / "main.md").read_text(encoding="utf-8") if (PAPER_DIR / "main.md").exists() else False, ""),
         ("AI 风险不是违规判定", "不构成违规判定" in (REPORT_DIR / "ASSUMPTIONS.md").read_text(encoding="utf-8"), ""),
         ("参数范围来源已说明", (REPORT_DIR / "PARAMETER_OPTIMIZATION_REPORT.md").exists(), "无真实参数范围"),
         ("一键复现命令可用", (ROOT / "scripts" / "19_run_all.py").exists(), ""),
@@ -2523,7 +2627,7 @@ def update_readme_and_continuation(audit_df: pd.DataFrame, pages: int | None, pe
 
 ## 当前状态
 
-已完成 B 题从输入审计、题面读取、附件解析、图像 NR-IQA 建模、组合赋权、综合评价、视频时序质量分析、图表、论文 Word/PDF 和提交包装配的全流程草稿。
+已完成 B 题从输入审计、题面读取、附件解析、图像 NR-IQA 建模、组合赋权、综合评价、附件内部相对高/中/低等级、视频时序质量分析、图表、论文 Word/PDF 和提交包装配的全流程草稿。
 
 ## 推荐提交文件
 
@@ -2562,7 +2666,7 @@ def update_readme_and_continuation(audit_df: pd.DataFrame, pages: int | None, pe
 
 ## 当前推荐模型口径
 
-M1 NR-IQA 指标量化；M2 AHP-熵权-CRITIC 组合赋权；M3 TOPSIS-灰色关联综合评价；M4 有效性修正与语义等级校准；M5 光流-一致性-闪烁视频时序质量模型；M6 本地规则型 Agent 复核。
+M1 NR-IQA 指标量化；M2 AHP-熵权-CRITIC 组合赋权；M3 TOPSIS-灰色关联综合评价；M4 有效性修正与绝对/相对等级校准；M5 光流-一致性-闪烁视频时序质量模型；M6 本地规则型 Agent 复核。
 
 ## Word 与论文格式要求
 
@@ -2608,7 +2712,7 @@ AIGC 图像/视频样本 → 多维无参考质量指标 → 组合赋权 → TO
 
 ## 已完成内容
 
-已完成工作区创建、RAR 解压、题面与细则读取、模板转换尝试、附件解析、特征提取、图像质量评价、视频时序质量评价、图表、论文、Word/PDF、支撑材料 zip 和最终审计。
+已完成工作区创建、RAR 解压、题面与细则读取、模板转换尝试、附件解析、特征提取、图像质量评价、附件内部相对高/中/低等级、视频时序质量评价、图表、论文、Word/PDF、支撑材料 zip 和最终审计。
 
 ## 当前主模型
 
