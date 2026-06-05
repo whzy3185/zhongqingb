@@ -1,0 +1,4 @@
+﻿method,status,reason
+grid_search,NOT_APPLICABLE,缺少真实参数空间
+response_surface_search,NOT_APPLICABLE,缺少真实参数观测值和质量响应样本
+strategy_rule_optimization,DONE,输出基于指标缺陷的改进策略，不输出虚构参数

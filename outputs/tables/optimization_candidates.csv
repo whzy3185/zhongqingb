@@ -1,0 +1,4 @@
+﻿strategy_id,scope,recommendation,parameter_combination,evidence
+S1,图像生成前提示词,明确主体、属性、空间关系和风格四类语义要素,NOT_AVAILABLE,题面要求语义结构化；附件无真实提示词
+S2,图像质量控制,优先降低伪影、过平滑和异常截断像素，再提高细节复杂度,NOT_AVAILABLE,有效性门控防止复杂度虚高
+S3,视频生成/筛选,采用光流连续性、亮度突变和颜色一致性作为筛选指标,NOT_AVAILABLE,问题三时序质量模型

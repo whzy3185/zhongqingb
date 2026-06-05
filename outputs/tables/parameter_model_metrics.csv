@@ -1,0 +1,3 @@
+﻿model,status,reason
+Ridge/LASSO/PLS on true generation parameters,NOT_APPLICABLE,附件没有真实生成参数，且 n=8；不训练会被误读为真实参数模型的回归器
+Spearman/Kendall observable proxy sensitivity,DONE,仅分析可观测属性与模型质量分的内部相关性

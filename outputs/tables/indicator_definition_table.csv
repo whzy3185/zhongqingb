@@ -1,0 +1,13 @@
+﻿indicator,name_cn,direction,definition
+semantic_proxy_score,语义要素覆盖代理,正向,由代理描述中主体、属性、场景、风格四类要素覆盖率计算
+sharpness_score,清晰度,正向,Laplacian 方差经对数饱和函数归一化
+nss_score,自然场景统计质量,正向,亮度均衡、对比度、灰度熵和伪影反向指标综合
+noise_inverse_score,噪声抑制,正向,高频残差噪声风险的反向分
+artifact_inverse_score,伪影抑制,正向,过曝/欠曝、块效应、过平滑风险的反向分
+edge_continuity_score,边缘连续性,正向,Canny 边缘连通区域的饱和得分
+shape_regularity_score,形状规则性,正向,边缘连续、伪影反向与对比度综合
+structure_integrity_score,结构完整性,正向,边缘连续性、形状规则性与伪影反向综合
+brightness_balance_score,亮度均衡,正向,亮度均值偏离和截断像素惩罚
+contrast_score,对比度,正向,灰度标准差饱和得分
+color_richness_score,色彩丰富度,正向,HSV 饱和度与色相熵综合
+composition_proxy_score,构图代理,正向,梯度显著性重心与中心/三分点关系

@@ -1,0 +1,13 @@
+﻿indicator,weight,method
+semantic_proxy_score,0.16000000000000006,AHP
+sharpness_score,0.12999999999999998,AHP
+nss_score,0.09999999999999999,AHP
+noise_inverse_score,0.08000000000000002,AHP
+artifact_inverse_score,0.09999999999999999,AHP
+edge_continuity_score,0.10999999999999999,AHP
+shape_regularity_score,0.09,AHP
+structure_integrity_score,0.09999999999999999,AHP
+brightness_balance_score,0.04000000000000001,AHP
+contrast_score,0.04000000000000001,AHP
+color_richness_score,0.029999999999999985,AHP
+composition_proxy_score,0.020000000000000004,AHP

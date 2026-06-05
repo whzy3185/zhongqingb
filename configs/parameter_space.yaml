@@ -1,0 +1,22 @@
+status: no_real_generation_parameters_found_yet
+required_for_true_parameter_optimization:
+  - model_name
+  - prompt
+  - seed
+  - sampling_steps
+  - resolution
+  - guidance_scale
+  - sampler
+  - generation_time_or_cost
+allowed_proxy_features_if_parameters_absent:
+  - image_resolution
+  - aspect_ratio
+  - file_format
+  - manually_audited_content_type
+  - proxy_prompt_token_count
+  - measured_visual_quality_features
+forbidden:
+  - fabricated_seed
+  - fabricated_temperature
+  - fabricated_guidance_scale
+  - fabricated_expert_score

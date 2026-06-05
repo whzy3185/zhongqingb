@@ -1,0 +1,19 @@
+image_quality_dimensions:
+  semantic_fidelity_proxy: 0.18
+  technical_quality: 0.37
+  structural_integrity: 0.27
+  visual_expression: 0.18
+video_temporal_dimensions:
+  single_frame_quality: 0.25
+  optical_flow_continuity: 0.30
+  content_consistency: 0.20
+  flicker_suppression: 0.15
+  stability_penalty: 0.10
+grade_thresholds:
+  excellent: 85
+  good: 70
+  medium: 55
+  low: 0
+notes:
+  - Semantic fidelity uses proxy descriptors only when original prompts are absent.
+  - Scores are model-derived comprehensive quality indices, not expert labels.

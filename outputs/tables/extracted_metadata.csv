@@ -1,0 +1,10 @@
+﻿sample_id,file_name,width,height,mode,format,dpi,exif_items,metadata_keys,size_bytes,readable,frame_count,fps,duration_sec
+image_01,1.png,2730,1535,RGBA,PNG,"(96.012, 96.012)",0.0,dpi,5486221,,,,
+image_02,2.png,1773,2364,RGBA,PNG,"(96.012, 96.012)",0.0,dpi,5044845,,,,
+image_03,3.png,2048,2048,RGBA,PNG,"(96.012, 96.012)",0.0,dpi,4421390,,,,
+image_04,4.png,1536,2730,RGBA,PNG,"(96.012, 96.012)",0.0,dpi,5620743,,,,
+image_05,5.jpg,2048,2048,RGB,JPEG,"(120, 120)",0.0,"dpi,jfif,jfif_density,jfif_unit,jfif_version",1039345,,,,
+image_06,6.jpg,2048,2048,RGB,JPEG,"(120, 120)",0.0,"dpi,jfif,jfif_density,jfif_unit,jfif_version",459828,,,,
+image_07,7.jpg,2048,2048,RGB,JPEG,"(120, 120)",0.0,"dpi,jfif,jfif_density,jfif_unit,jfif_version",544822,,,,
+image_08,8.jpg,2048,2048,RGB,JPEG,"(120, 120)",0.0,"dpi,jfif,jfif_density,jfif_unit,jfif_version",298720,,,,
+video_01,车流视频.mp4,1920,1080,,,,,,6691691,True,121.0,23.999999841322314,5.0416667

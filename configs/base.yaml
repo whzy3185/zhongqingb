@@ -1,0 +1,14 @@
+project_name: B_aigc_quality_optimization
+workspace: D:/zhongqingb
+project_root: D:/zhongqingb/B_aigc_quality_optimization
+material_policy: problem_pdf_has_highest_priority
+random_seed: 20260605
+locale: zh_CN
+true_problem_focus:
+  - no_reference_image_quality_assessment
+  - ai_generated_image_evaluation
+  - video_temporal_quality_assessment
+parameter_policy:
+  real_generation_parameters_required: true
+  fabricate_missing_parameters: false
+  if_absent: report_not_applicable_and_use_observable_proxy_only

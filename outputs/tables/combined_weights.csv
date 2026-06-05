@@ -1,0 +1,13 @@
+﻿indicator,weight,method
+semantic_proxy_score,0.09795591120927685,Combined
+sharpness_score,0.11309460623325666,Combined
+nss_score,0.08086296525984041,Combined
+noise_inverse_score,0.0894134332123726,Combined
+artifact_inverse_score,0.09457045719715283,Combined
+edge_continuity_score,0.0834056036019255,Combined
+shape_regularity_score,0.0803654671122508,Combined
+structure_integrity_score,0.08153289028097492,Combined
+brightness_balance_score,0.06397570622267053,Combined
+contrast_score,0.0537171142167439,Combined
+color_richness_score,0.060070682752676324,Combined
+composition_proxy_score,0.10103516270085862,Combined

@@ -1,0 +1,15 @@
+status: not_a_primary_question_after_problem_reading
+reason: The true B problem asks for image NR-IQA, image evaluation, and video temporal quality evaluation. It does not provide real generation parameter records.
+if_parameters_available_later:
+  objectives:
+    - maximize_quality
+    - minimize_artifact_risk
+    - minimize_temporal_instability
+    - minimize_cost
+  methods:
+    - grid_search
+    - response_surface_search
+    - genetic_algorithm_optional
+if_parameters_absent:
+  output: content_and_prompt_strategy_recommendations_only
+  no_fake_parameter_combinations: true

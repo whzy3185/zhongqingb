@@ -1,0 +1,13 @@
+models:
+  M1: NR-IQA indicator quantification model
+  M2: AHP-Entropy-CRITIC combined weighting model
+  M3: TOPSIS-Grey relational comprehensive image evaluation model
+  M4: Validity correction and semantic grade calibration model
+  M5: Video temporal quality assessment model
+  M6: Observable proxy sensitivity analysis
+  M7: Local rule-based multi-agent review model
+normalization:
+  positive: min_max
+  negative: reverse_min_max
+missing_prompt_policy: proxy_descriptor_with_explicit_assumption
+random_seed: 20260605

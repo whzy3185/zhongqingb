@@ -1,0 +1,16 @@
+pymupdf
+PyPDF2
+pdfplumber
+python-docx
+reportlab
+pandas
+numpy
+Pillow
+opencv-python
+scikit-learn
+scipy
+openpyxl
+matplotlib
+seaborn
+jieba
+olefile
